@@ -3,11 +3,19 @@
 #include "display.h"
 
 
-void print_Board(char** word){
+void print_Board(char** word, int status[GUESSTURNS][LENGTH]){
     for(int c = 0; c < 6;c++){
         printf("---------------------\n|");
         for(int r = 0; r < 5;r++){
-            printf(" %c |",word[c][r]);
+            if(status[c][r] == UNUSED){
+                printf(" %c |",word[c][r]);
+            }else if(status[c][r] == NONEXIST){
+                printf(" \033[40m%c\033[m |",word[c][r]);
+            }else if(status[c][r] == WRONGSPOT){
+                printf(" \033[43m%c\033[m |",word[c][r]);
+            }else if(status[c][r] == CORRECT){
+                printf(" \033[42m%c\033[m |",word[c][r]);
+            }
         }
         printf("\n");
     }
@@ -20,7 +28,7 @@ void print_KB(int kb[]){
         if(i == 10){
             printf("\n ");
         }else if(i == 19){
-            printf("\n    ");
+            printf("\n   ");
         }
 
         if(kb[alph[i]-'A'] == UNUSED){
