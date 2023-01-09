@@ -2,9 +2,12 @@
 #include<stdlib.h>
 #include<time.h>
 #include<string.h>
+#include<stdbool.h>
 #include "backprop.h"
 #include "display.h"
 #include "file.h"
+
+NODE* save_data(NODE* top, char* vocabulary, int guessNum);
 
 int keyboard[ALPHBET] = {UNUSED};
 int b_status[GUESSTURNS][LENGTH] = {UNUSED};
@@ -14,7 +17,8 @@ char **board = NULL;
 char *input = NULL;
 char *puzzle = NULL;
 FILE* fptr;
-// FILE* dataptr;
+FILE* dataptr;
+NODE *head = NULL;
 
 int tmp = 0;
 
@@ -27,11 +31,14 @@ int main(){
     puzzle = (char*)malloc(sizeof(char*)*LENGTH);
 
     fptr = open_library(fptr);
-    // fptr = tidy_up(fptr);
+
     
     do{
         printf("New Quiz!\n");
         // init
+        for(int i = 0;i<ALPHBET;i++){
+            keyboard[i] = UNUSED;
+        }
         for(int t = 0;t < 6;t++){
             memset(board[t], 0, sizeof(char)*LENGTH);
         }
@@ -41,28 +48,45 @@ int main(){
 
         // Pick a word for puzzle
         pick_puzzle(fptr,puzzle);
+        // puzzle = "nurse";
 
         print_Board(board, b_status);
         print_KB(keyboard);
         
         for(int turns = 0; turns < 6;turns++){
             guess_turn++;
-            
             input = board[turns];
             feed_input(input);
 
-            // if(!detect_guess(puzzle, input)){break;}
+            if(!detect_guess(puzzle, input)){
+                
+                print_Board(board, b_status);
+                print_KB(keyboard);
+                break;
+            }
 
+            
             print_Board(board, b_status);
             print_KB(keyboard);
 
+            if(guess_turn == 6){guess_turn=0;}
+
         }
 
-        printf("You guess %d times!\n\n\n", guess_turn);
-        // save_data(dataptr, puzzle, guess_time);
+        if(guess_turn == 0){
+            printf("Sorry, you didn't get the right answer.\n");
+            printf("The answer is:%s\n\n\n",puzzle);
+        }else{
+            printf("You guess %d times!\n\n\n", guess_turn);
+        }
+        head = save_data(head, puzzle, guess_turn);
         tmp++;
-    }while(tmp < 3);
+    }while(1);
 
+    printf("writing file...\n");
+    dataptr = write_file(head,dataptr);
+
+    fclose(dataptr);
     fclose(fptr);
     clearup();
     printf("Execute successfully.\n");
@@ -79,6 +103,9 @@ void feed_input(char* container){
             if((c >= 'a' && c <= 'z')){
                 container[numIn] = c;
                 numIn++; 
+            }else if(c == '0'){
+                printf("Exit.\n");
+                exit(EXIT_SUCCESS);
             }
         }
 
@@ -89,26 +116,47 @@ void feed_input(char* container){
 }
 
 int detect_guess(char* answer, char* guess){
-    /*Function 1 偵測答案與猜測
-    比對answer與guess
-    Example (Answer => apple)(guess => aeflp)
-    b_status[0][0] = CORRECT;
-    b_status[0][1] = WRONGSPOT;
-    ...
-    <本來想說比較的時候可以用Queue之類的，但是好像有點多此一舉，所以就單純一個個字母比對應該就豪ㄌ>
-    可以先從guess[0]開始抓，然後跟answer的字母一對一比較，遇到CORRECT就可以換guess[1]繼續比...之類ㄉ(?)
-    */
+    bool answerFlags[LENGTH] = {false,false,false,false,false};
+    int clue[LENGTH] = {NONEXIST,NONEXIST,NONEXIST,NONEXIST,NONEXIST};
+    
+    for(int i = 0;i<LENGTH;i++){
+        b_status[guess_turn-1][i] = clue[i];
+        keyboard[guess[i]-'a'] = NONEXIST;
+    }
+    // guess
+    for(int i=0 ; i < LENGTH ; i++){
+        if(guess[i] == answer[i]){
+            clue[i] = CORRECT;
+            keyboard[guess[i]-'a'] = CORRECT;
+            answerFlags[i] = true;
+        }
+    }
 
-    /*Function 2 更改keyboard 顯示
-    Global keyboard[]
-    若無此字母則將該字母於keyboard裡的屬性設為NONEXIST
-    若有此字母但位置不正確則設屬性為WRONGSPOT
-    若字母正確且位置也正確則設為CORRECT
+    //
+    for(int i=0 ; i<LENGTH ; i++){
+        if(clue[i] == NONEXIST){
+            for(int j=0 ; j<LENGTH ;j++){
+                if(guess[i] == answer[j] && !answerFlags[j]){
+                    clue[i] = WRONGSPOT;
+                    keyboard[guess[i]-'a'] = WRONGSPOT;
+                    answerFlags[j] = true;
+                    break;
+                }
+            }
+        }
+    }
 
-    Example (Answer => apple)(guess => aeflp)
-    keyboard[ guess[0] - 'a' ] = CORRECT
-    ...
-    若猜測正確則return 0, 反之return 1 */
+    for(int i=0 ; i<LENGTH ; i++){
+        b_status[guess_turn-1][i] = clue[i];
+    }
+
+    if (clue[0] == CORRECT && clue[1] == CORRECT && clue[2] == CORRECT && clue[3] == CORRECT && clue[4] == CORRECT){
+        return 0;
+    }
+    else{
+        return 1;
+    }
+
     return 0;
 }
 
@@ -122,21 +170,18 @@ void pick_puzzle(FILE* fp, char* answer){
     printf("word:%s\n",answer);
 }
 
-FILE* save_data(FILE* dfp, char* vocabulary, int guessNum){
-    /*Function 1 儲存單字與猜數
-    <用Linked-list、Stack、Queue之類ㄉ都可以!>
-    node裡面包含的資料有：
-        char 單字[5]
-        int 猜數
-        其他像top、或資料結構要用到ㄉ東西...
-    */
-    
-    /*Function 2 開檔寫檔
-    <可以先直接寫成會覆蓋原檔案就好，我研究一下搜尋要怎麼寫owo>
-    方便檢查資料有沒有存錯之類的
-    建一個檔案來檢視每次遊玩的紀錄
-    */ 
-   return dfp;
+NODE* save_data(NODE* top, char* vocabulary, int guessNum){
+    NODE *temp;
+    temp = (NODE*)malloc(sizeof(NODE));
+
+    temp->turn = guessNum;
+    for(int i = 0;i<LENGTH;i++){
+        temp->voc[i] = vocabulary[i];
+    }
+    temp->next = top;
+    top = temp;
+
+    return top;
 }
 
 void clearup(){
