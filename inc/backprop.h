@@ -5,9 +5,11 @@
 #define GUESSTURNS 6
 #define ALPHBET 26
 
+
+
 void feed_input(char* container);
 void pick_puzzle(FILE* fp, char* answer);
-FILE* save_data(FILE* dfp, char* vocabulary, int guessNum);
+int detect_guess(char* answer, char* guess);
 void clearup();
 
 #endif
