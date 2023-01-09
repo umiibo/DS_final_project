@@ -3,7 +3,7 @@
 #include "display.h"
 
 
-void print_Board(char** word, int status[GUESSTURNS][LENGTH]){
+void print_Board(char** word, int status[6][5]){
     for(int c = 0; c < 6;c++){
         printf("---------------------\n|");
         for(int r = 0; r < 5;r++){
@@ -30,19 +30,15 @@ void print_KB(int kb[]){
         }else if(i == 19){
             printf("\n   ");
         }
-
         if(kb[alph[i]-'A'] == UNUSED){
             printf("%c ",alph[i]);
         }else if(kb[alph[i]-'A'] == NONEXIST){
             printf("\033[30m%c\033[m ",alph[i]);
-            printf(" ");
         }else if(kb[alph[i]-'A'] == WRONGSPOT){
             printf("\033[33m%c\033[m ",alph[i]);
-            printf(" ");
         }else if(kb[alph[i]-'A'] == CORRECT){
             printf("\033[32m%c\033[m ",alph[i]);
         }
-        // printf("%d ",kb[alph[i] - 'A']);
     }
     printf("\n");
     printf("---------------------\n");
